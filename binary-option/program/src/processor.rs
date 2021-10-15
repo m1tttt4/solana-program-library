@@ -19,6 +19,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
+    clock::UnixTimestamp,
 };
 use spl_token::{
     instruction::AuthorityType,
@@ -36,7 +37,7 @@ impl Processor {
         match instruction {
             BinaryOptionInstruction::InitializeBinaryOption(args) => {
                 msg!("Instruction: InitializeBinaryOption");
-                process_initialize_binary_option(program_id, accounts, args.decimals)
+                process_initialize_binary_option(program_id, accounts, args.decimals, args.expiry, args.strike, args.underlying_asset_address)
             }
             BinaryOptionInstruction::Trade(args) => {
                 msg!("Instruction: Trade");
@@ -64,6 +65,9 @@ pub fn process_initialize_binary_option(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     decimals: u8,
+    expiry: UnixTimestamp,
+    strike: f64,
+    underlying_asset_address: Pubkey,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
@@ -170,11 +174,16 @@ pub fn process_initialize_binary_option(
     binary_option.decimals = decimals;
     binary_option.circulation = 0;
     binary_option.settled = false;
+    binary_option.expiry = expiry;
+    binary_option.strike = strike;
+    binary_option.underlying_asset_address = underlying_asset_address;
+
     binary_option.long_mint_account_pubkey = *long_token_mint_info.key;
     binary_option.short_mint_account_pubkey = *short_token_mint_info.key;
     binary_option.escrow_mint_account_pubkey = *escrow_mint_info.key;
     binary_option.escrow_account_pubkey = *escrow_account_info.key;
     binary_option.owner = *update_authority_info.key;
+    
     binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
 
     Ok(())

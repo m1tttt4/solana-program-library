@@ -1,6 +1,7 @@
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
+    clock::UnixTimestamp,
     sysvar,
 };
 
@@ -10,6 +11,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct InitializeBinaryOptionArgs {
     pub decimals: u8,
+    pub strike: f64,
+    pub expiry: UnixTimestamp,
+    pub underlying_asset_address: Pubkey,
 }
 
 #[repr(C)]
@@ -44,6 +48,9 @@ pub fn initialize_binary_option(
     mint_authority: Pubkey,
     update_authority: Pubkey,
     decimals: u8,
+    expiry:  UnixTimestamp,
+    strike: f64,
+    underlying_asset_address: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -61,6 +68,9 @@ pub fn initialize_binary_option(
         ],
         data: BinaryOptionInstruction::InitializeBinaryOption(InitializeBinaryOptionArgs {
             decimals,
+            expiry,
+            strike,
+            underlying_asset_address,
         })
         .try_to_vec()
         .unwrap(),

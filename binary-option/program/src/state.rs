@@ -1,6 +1,6 @@
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, program_error::ProgramError,
-    pubkey::Pubkey,
+    pubkey::Pubkey, clock::UnixTimestamp,
 };
 
 use crate::error::BinaryOptionError;
@@ -18,6 +18,14 @@ pub struct BinaryOption {
     pub short_mint_account_pubkey: Pubkey,
     pub owner: Pubkey,
     pub winning_side_pubkey: Pubkey,
+    pub underlying_asset_address: Pubkey,
+    pub strike: f64,
+    pub expiry :UnixTimestamp,
+    //let clock = Clock::get();
+    // clock.unix_timestamp; 
+    // note pub unix_timestamp: UnixTimestamp,
+    // pub type UnixTimestamp = i64;
+
 }
 
 impl BinaryOption {
