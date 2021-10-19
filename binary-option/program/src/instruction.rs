@@ -12,7 +12,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub struct InitializeBinaryOptionArgs {
     pub decimals: u8,
     pub strike: f64,
-    pub expiry: UnixTimestamp,
+    pub expiry: u64,
     pub underlying_asset_address: Pubkey,
 }
 
@@ -48,7 +48,7 @@ pub fn initialize_binary_option(
     mint_authority: Pubkey,
     update_authority: Pubkey,
     decimals: u8,
-    expiry:  UnixTimestamp,
+    expiry:  u64,
     strike: f64,
     underlying_asset_address: Pubkey,
 ) -> Instruction {

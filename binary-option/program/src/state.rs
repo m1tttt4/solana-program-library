@@ -20,7 +20,7 @@ pub struct BinaryOption {
     pub winning_side_pubkey: Pubkey,
     pub underlying_asset_address: Pubkey,
     pub strike: f64,
-    pub expiry :UnixTimestamp,
+    pub expiry :u64,
     //let clock = Clock::get();
     // clock.unix_timestamp; 
     // note pub unix_timestamp: UnixTimestamp,

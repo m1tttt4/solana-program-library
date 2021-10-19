@@ -20,6 +20,10 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
     clock::UnixTimestamp,
+    clock::Clock,
+    sysvar::Sysvar,
+   
+
 };
 use spl_token::{
     instruction::AuthorityType,
@@ -65,10 +69,15 @@ pub fn process_initialize_binary_option(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     decimals: u8,
-    expiry: UnixTimestamp,
+    expiry: u64,
     strike: f64,
     underlying_asset_address: Pubkey,
 ) -> ProgramResult {
+    let now = Clock::get()?.unix_timestamp as u64;
+    
+    if expiry < now{
+        return Err(BinaryOptionError::ExpiryInThePast.into());
+    }
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let escrow_mint_info = next_account_info(account_info_iter)?;
