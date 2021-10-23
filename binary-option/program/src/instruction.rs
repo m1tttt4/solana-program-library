@@ -1,7 +1,6 @@
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    clock::UnixTimestamp,
     sysvar,
 };
 

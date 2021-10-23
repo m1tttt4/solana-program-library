@@ -21,7 +21,7 @@ SYSTEM_PROGRAM_ID = '11111111111111111111111111111111'
 SYSVAR_RENT_ID = 'SysvarRent111111111111111111111111111111111'
 ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
 TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-BINARY_OPTION_PROGRAM_ID = 'betw959P4WToez4DkuXwNsJszqbpe3HuY56AcG5yevx'
+BINARY_OPTION_PROGRAM_ID = '6Msecaqpxtqatks2JyqXg66nYZ3XxrZ8gDwuSaH6sept'
 
 
 def initialize_binary_option_instruction(
@@ -35,7 +35,10 @@ def initialize_binary_option_instruction(
     token_account,
     system_account,
     rent_account,
-    decimals
+    decimals,
+    expiry,
+    strike,
+    underlying_asset_address,
 ):
     keys = [
         AccountMeta(pubkey=pool_account, is_signer=True, is_writable=True),

@@ -19,7 +19,6 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
-    clock::UnixTimestamp,
     clock::Clock,
     sysvar::Sysvar,
    
