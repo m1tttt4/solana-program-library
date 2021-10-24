@@ -93,18 +93,36 @@ def trade_instruction(
     data = struct.pack("<BQQQ", 1, size, buyer_price, seller_price)
     return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
 
+# def settle_instruction(
+#     pool_account,
+#     winning_mint_account,
+#     pool_owner_account,
+# ):
+#     keys = [
+#         AccountMeta(pubkey=pool_account, is_signer=False, is_writable=True),
+#         AccountMeta(pubkey=winning_mint_account, is_signer=False, is_writable=False),
+#         AccountMeta(pubkey=pool_owner_account, is_signer=True, is_writable=False),
+#     ]
+#     data = struct.pack("<B", 2)
+#     return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
+    
+
 def settle_instruction(
     pool_account,
-    winning_mint_account,
+    long_mint_account,
+    short_mint_account,
     pool_owner_account,
 ):
     keys = [
         AccountMeta(pubkey=pool_account, is_signer=False, is_writable=True),
-        AccountMeta(pubkey=winning_mint_account, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=long_mint_account, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=short_mint_account, is_signer=False, is_writable=False),
         AccountMeta(pubkey=pool_owner_account, is_signer=True, is_writable=False),
     ]
     data = struct.pack("<B", 2)
     return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
+
+    
 
 def collect_instruction(
     pool_account,
@@ -141,7 +159,7 @@ class BinaryOption():
         self.cipher = Fernet(cfg["DECRYPTION_KEY"])
 
 
-    def initialize(self, api_endpoint, escrow_mint, decimals=2, skip_confirmation=True):
+    def initialize(self, api_endpoint, escrow_mint, expiry, strike, underlying_asset_address, decimals=2, skip_confirmation=True):
         msg = ""
         # Initalize Clinet
         client = Client(api_endpoint)
@@ -182,6 +200,9 @@ class BinaryOption():
             system_account,
             rent_account,
             decimals,
+            expiry,
+            strike,
+            underlying_asset_address,
         )
         tx = tx.add(init_binary_option_ix)
         msg += f" | Creating binary option"
@@ -288,7 +309,39 @@ class BinaryOption():
             msg += f" | ERROR: Encountered exception while attempting to send transaction: {e}"
             raise(e)
 
-    def settle(self, api_endpoint, pool_account, winning_mint, skip_confirmation=True):
+    # def settle(self, api_endpoint, pool_account, winning_mint, skip_confirmation=True):
+    #     msg = ""
+    #     client = Client(api_endpoint)
+    #     msg += "Initialized client"
+    #     # Create account objects
+    #     source_account = Account(self.private_key)
+    #     # Signers
+    #     signers = [source_account]
+    #     # List non-derived accounts
+    #     pool_account = PublicKey(pool_account) 
+    #     winning_mint_account = PublicKey(winning_mint) 
+    #     tx = Transaction()
+    #     settle_ix = settle_instruction(
+    #         pool_account,
+    #         winning_mint_account,
+    #         source_account.public_key(),
+    #     )
+    #     tx = tx.add(settle_ix)
+    #     # Send request
+    #     try:
+    #         response = client.send_transaction(tx, *signers, opts=types.TxOpts(skip_confirmation=skip_confirmation))
+    #         return json.dumps(
+    #             {
+    #                 'status': HTTPStatus.OK,
+    #                 'msg': msg + f" | Settle successful, winner: {str(winning_mint_account)}",
+    #                 'tx': response.get('result') if skip_confirmation else response['result']['transaction']['signatures'],
+    #             }
+    #         )
+    #     except Exception as e:
+    #         msg += f" | ERROR: Encountered exception while attempting to send transaction: {e}"
+    #         raise(e)
+    
+    def settle(self, api_endpoint, pool_account, long_mint, short_mint, skip_confirmation=True):
         msg = ""
         client = Client(api_endpoint)
         msg += "Initialized client"
@@ -298,11 +351,13 @@ class BinaryOption():
         signers = [source_account]
         # List non-derived accounts
         pool_account = PublicKey(pool_account) 
-        winning_mint_account = PublicKey(winning_mint) 
+        long_mint_account = PublicKey(long_mint)
+        short_mint_account = PublicKey(short_mint) 
         tx = Transaction()
         settle_ix = settle_instruction(
             pool_account,
-            winning_mint_account,
+            long_mint_account,
+            short_mint_account,
             source_account.public_key(),
         )
         tx = tx.add(settle_ix)
@@ -312,13 +367,14 @@ class BinaryOption():
             return json.dumps(
                 {
                     'status': HTTPStatus.OK,
-                    'msg': msg + f" | Settle successful, winner: {str(winning_mint_account)}",
+                    'msg': msg + f" | Settle successful, winner",
                     'tx': response.get('result') if skip_confirmation else response['result']['transaction']['signatures'],
                 }
             )
         except Exception as e:
             msg += f" | ERROR: Encountered exception while attempting to send transaction: {e}"
             raise(e)
+    
 
     def collect(self, api_endpoint, pool_account, collector, skip_confirmation=True):
         msg = ""
