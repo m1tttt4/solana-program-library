@@ -30,7 +30,7 @@ pub enum BinaryOptionInstruction {
 
     Trade(TradeArgs),
 
-    Settle,
+    SettleOracle,
 
     Collect,
 }
@@ -126,6 +126,7 @@ pub fn trade(
 }
 
 /// Creates a Settle instruction
+ /*
 pub fn settle(
     program_id: Pubkey,
     pool_account: Pubkey,
@@ -140,6 +141,27 @@ pub fn settle(
             AccountMeta::new_readonly(pool_authority, true),
         ],
         data: BinaryOptionInstruction::Settle.try_to_vec().unwrap(),
+    }
+}
+*/
+
+/// Creates a Settle instruction using oracle
+pub fn settle_oracle(
+    program_id: Pubkey,
+    pool_account: Pubkey,
+    long_token_mint: Pubkey,
+    short_token_mint: Pubkey,
+    pool_authority: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(pool_account, false),
+            AccountMeta::new_readonly(long_token_mint, false),
+            AccountMeta::new_readonly(short_token_mint, false),
+            AccountMeta::new_readonly(pool_authority, true),
+        ],
+        data: BinaryOptionInstruction::SettleOracle.try_to_vec().unwrap(),
     }
 }
 

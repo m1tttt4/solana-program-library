@@ -40,7 +40,13 @@ impl Processor {
         match instruction {
             BinaryOptionInstruction::InitializeBinaryOption(args) => {
                 msg!("Instruction: InitializeBinaryOption");
-                process_initialize_binary_option(program_id, accounts, args.decimals, args.expiry, args.strike, args.underlying_asset_address)
+                process_initialize_binary_option(
+                    program_id, 
+                    accounts, 
+                    args.decimals, 
+                    args.expiry, 
+                    args.strike, 
+                    args.underlying_asset_address)
             }
             BinaryOptionInstruction::Trade(args) => {
                 msg!("Instruction: Trade");
@@ -52,9 +58,13 @@ impl Processor {
                     args.sell_price,
                 )
             }
-            BinaryOptionInstruction::Settle => {
+            /*BinaryOptionInstruction::Settle => {
                 msg!("Instruction: Settle");
                 process_settle(program_id, accounts)
+            }*/
+            BinaryOptionInstruction::SettleOracle => {
+                msg!("Instruction: Settle");
+                process_settle_oracled(program_id, accounts)
             }
             BinaryOptionInstruction::Collect => {
                 msg!("Instruction: Collect");
@@ -594,6 +604,7 @@ pub fn process_trade(
     Ok(())
 }
 
+/*
 pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     // This should NEVER be called directly (otherwise this is literally a rug)
     // The `pool_owner_info` needs to approve this action, so the recommended use case is to have a higher
@@ -620,6 +631,68 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     } else {
         return Err(BinaryOptionError::InvalidWinner.into());
     }
+    binary_option.settled = true;
+    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
+    Ok(())
+}
+*/
+
+pub fn get_price_from_pyth(asset: &Pubkey) -> (f64,f64){
+    //Needs implementation
+    return(300.0,3.0);
+}
+
+
+pub fn process_settle_oracled(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    // This is a different implementation to take care of rug pull
+    // The fn takes both mint accounts and decides using Pyth, who won
+    
+    // The `pool_owner_info` needs to approve this action, so the recommended use case is to have a higher
+    // level program own the pool and use an oracle to resolve settlements
+    let account_info_iter = &mut accounts.iter();
+    let binary_option_account_info = next_account_info(account_info_iter)?;
+    let long_mint_token_account_info = next_account_info(account_info_iter)?;
+    let short_mint_token_account_info = next_account_info(account_info_iter)?;
+    //let winning_mint_account_info = next_account_info(account_info_iter)?;
+    let pool_owner_info = next_account_info(account_info_iter)?;
+
+    let mut binary_option =
+        BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
+    if !pool_owner_info.is_signer {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    if binary_option.settled {
+        return Err(BinaryOptionError::AlreadySettled.into());
+    }
+    let now = Clock::get()?.unix_timestamp as u64;
+    if binary_option.expiry > now  {
+        return Err(BinaryOptionError::ExpiryInTheFuture.into());
+    }
+
+    assert_keys_equal(*pool_owner_info.key, binary_option.owner)?;
+    assert_keys_equal(*long_mint_token_account_info.key, binary_option.long_mint_account_pubkey)?;
+    assert_keys_equal(*short_mint_token_account_info.key, binary_option.short_mint_account_pubkey)?;
+    let (settle_price,confidence_interval) = get_price_from_pyth(&binary_option.underlying_asset_address);
+
+    if (settle_price+confidence_interval) > binary_option.strike {
+        binary_option.winning_side_pubkey = binary_option.long_mint_account_pubkey;
+    }
+    else if (settle_price-confidence_interval) < binary_option.strike {
+        binary_option.winning_side_pubkey = binary_option.short_mint_account_pubkey;
+    }
+    //This is if we dont know whether long one or short. SO divide equally. FOr now maybe implementation will be in future
+    else{
+        binary_option.winning_side_pubkey = *binary_option_account_info.key;
+    }
+   
+    /*
+    if *long_mint_token_account_info.key == binary_option.long_mint_account_pubkey
+        || *short_mint_token_account_info.key == binary_option.short_mint_account_pubkey
+    {
+        binary_option.winning_side_pubkey = *winning_mint_account_info.key;
+    } else {
+        return Err(BinaryOptionError::InvalidWinner.into());
+    }*/
     binary_option.settled = true;
     binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
     Ok(())

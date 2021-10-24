@@ -32,6 +32,8 @@ pub enum BinaryOptionError {
     UnderlyingAssetInvalid,
     #[error("ExpiryInThePast")]
     ExpiryInThePast,
+    #[error("ExpiryInTheFuture")]
+    ExpiryInTheFuture,
 }
 
 impl From<BinaryOptionError> for ProgramError {
