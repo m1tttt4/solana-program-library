@@ -17,7 +17,7 @@ pub struct BinaryOption {
     pub short_mint_account_pubkey: Pubkey,
     pub owner: Pubkey,
     pub winning_side_pubkey: Pubkey,
-    pub underlying_asset_address: Pubkey,
+    pub underlying_asset_address: String,
     pub strike: f64,
     pub expiry :u64,
     //let clock = Clock::get();

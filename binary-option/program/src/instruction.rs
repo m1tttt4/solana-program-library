@@ -10,9 +10,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct InitializeBinaryOptionArgs {
     pub decimals: u8,
-    pub strike: f64,
     pub expiry: u64,
-    pub underlying_asset_address: Pubkey,
+    pub strike: f64,
+   // pub underlying_asset_address: String,
 }
 
 #[repr(C)]
@@ -38,6 +38,7 @@ pub enum BinaryOptionInstruction {
 /// Creates an InitializeBinaryOption instruction
 #[allow(clippy::too_many_arguments)]
 pub fn initialize_binary_option(
+
     program_id: Pubkey, // Address of deployed program
     pool_account: Pubkey, // Address of Upgrade Authority
     escrow_mint: Pubkey, // TBD
@@ -49,7 +50,8 @@ pub fn initialize_binary_option(
     decimals: u8, // 2 = 100, 3 = 1000 [ only using 2 for now ]
     expiry:  u64, // Unix timestamp
     strike: f64, // 64-bit float
-    underlying_asset_address: Pubkey, // Address of underlying asset [ from Pyth for now ]
+    //underlying_asset_address: Pubkey, // Address of underlying asset [ from Pyth for now ]
+
 ) -> Instruction {
     Instruction {
         program_id,
@@ -69,7 +71,6 @@ pub fn initialize_binary_option(
             decimals,
             expiry,
             strike,
-            underlying_asset_address,
         })
         .try_to_vec()
         .unwrap(),

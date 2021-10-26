@@ -45,8 +45,9 @@ impl Processor {
                     accounts, 
                     args.decimals, 
                     args.expiry, 
-                    args.strike, 
-                    args.underlying_asset_address)
+                    args.strike
+                   // args.underlying_asset_address
+                )
             }
             BinaryOptionInstruction::Trade(args) => {
                 msg!("Instruction: Trade");
@@ -80,13 +81,14 @@ pub fn process_initialize_binary_option(
     decimals: u8,
     expiry: u64,
     strike: f64,
-    underlying_asset_address: Pubkey,
+   // underlying_asset_address: String,
 ) -> ProgramResult {
+    //Check to make sure you are not initializing an option that has already expired
     let now = Clock::get()?.unix_timestamp as u64;
-    
     if expiry < now{
         return Err(BinaryOptionError::ExpiryInThePast.into());
     }
+
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let escrow_mint_info = next_account_info(account_info_iter)?;
@@ -186,7 +188,7 @@ pub fn process_initialize_binary_option(
         update_authority_info,
         BinaryOption::LEN,
     )?;
-
+    msg!("Reached Here");
     let mut binary_option =
         BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
     binary_option.decimals = decimals;
@@ -194,7 +196,7 @@ pub fn process_initialize_binary_option(
     binary_option.settled = false;
     binary_option.expiry = expiry;
     binary_option.strike = strike;
-    binary_option.underlying_asset_address = underlying_asset_address;
+    //binary_option.underlying_asset_address = underlying_asset_address;
 
     binary_option.long_mint_account_pubkey = *long_token_mint_info.key;
     binary_option.short_mint_account_pubkey = *short_token_mint_info.key;
@@ -637,7 +639,7 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
 }
 */
 
-pub fn get_price_from_pyth(asset: &Pubkey) -> (f64,f64){
+pub fn get_price_from_pyth(asset: &String) -> (f64,f64){
     //Needs implementation
     return(300.0,3.0);
 }
@@ -672,7 +674,7 @@ pub fn process_settle_oracled(_program_id: &Pubkey, accounts: &[AccountInfo]) ->
     assert_keys_equal(*pool_owner_info.key, binary_option.owner)?;
     assert_keys_equal(*long_mint_token_account_info.key, binary_option.long_mint_account_pubkey)?;
     assert_keys_equal(*short_mint_token_account_info.key, binary_option.short_mint_account_pubkey)?;
-    let (settle_price,confidence_interval) = get_price_from_pyth(&binary_option.underlying_asset_address);
+    let (settle_price,confidence_interval) = get_price_from_pyth(&String::from("foo"));
 
     if (settle_price+confidence_interval) > binary_option.strike {
         binary_option.winning_side_pubkey = binary_option.long_mint_account_pubkey;
