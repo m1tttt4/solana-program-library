@@ -38,7 +38,7 @@ def initialize_binary_option_instruction(
     decimals,
     expiry,
     strike,
-    underlying_asset_address,
+    #underlying_asset_address,
 ):
     keys = [
         AccountMeta(pubkey=pool_account, is_signer=True, is_writable=True),
@@ -52,7 +52,7 @@ def initialize_binary_option_instruction(
         AccountMeta(pubkey=system_account, is_signer=False, is_writable=False),
         AccountMeta(pubkey=rent_account, is_signer=False, is_writable=False),
     ]
-    data = struct.pack("<BB", 0, decimals)
+    data = struct.pack("<BHQf", 0, decimals, expiry, strike)
     return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
 
 def trade_instruction(
@@ -159,7 +159,7 @@ class BinaryOption():
         self.cipher = Fernet(cfg["DECRYPTION_KEY"])
 
 
-    def initialize(self, api_endpoint, escrow_mint, expiry, strike, underlying_asset_address, decimals=2, skip_confirmation=True):
+    def initialize(self, api_endpoint, escrow_mint, expiry, strike,  decimals=2, skip_confirmation=True):
         msg = ""
         # Initalize Clinet
         client = Client(api_endpoint)
@@ -202,7 +202,7 @@ class BinaryOption():
             decimals,
             expiry,
             strike,
-            underlying_asset_address,
+            #underlying_asset_address,
         )
         tx = tx.add(init_binary_option_ix)
         msg += f" | Creating binary option"

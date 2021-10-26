@@ -1,10 +1,13 @@
 import pandas as pd
-from .binary_option import *
+from binary_option import *
 import time
 from spl.token.client import Token
+import time
+import datetime
 
 
-api_endpoint = "https://api.devnet.solana.com/"
+#api_endpoint = "https://api.devnet.solana.com/"
+api_endpoint = "http://127.0.0.1:8899"
 balance_data = []
 
 def await_confirmation(client, txn):
@@ -100,8 +103,10 @@ token = Token.create_mint(
 )
 
 mint = str(token.pubkey)
-
-res = json.loads(bp.initialize(api_endpoint, mint, skip_confirmation=False))
+expiry = int(time.time()) + 2000
+strike = 121.00
+underlying_asset_address = "4aDoSXJ5o3AuvL7QFeR6h44jALQfTmUUCTVGDD6aoJTM"
+res = json.loads(bp.initialize(api_endpoint, mint, expiry, strike, decimals=2,skip_confirmation=False))
 print(res)
 
 pool = res.get("binary_option")

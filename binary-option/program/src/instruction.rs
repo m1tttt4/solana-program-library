@@ -10,9 +10,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct InitializeBinaryOptionArgs {
     pub decimals: u8,
-    pub strike: f64,
     pub expiry: u64,
-    pub underlying_asset_address: Pubkey,
+    pub strike: f64,
+   // pub underlying_asset_address: String,
 }
 
 #[repr(C)]
@@ -49,7 +49,7 @@ pub fn initialize_binary_option(
     decimals: u8,
     expiry:  u64,
     strike: f64,
-    underlying_asset_address: Pubkey,
+    //underlying_asset_address: String,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -69,7 +69,6 @@ pub fn initialize_binary_option(
             decimals,
             expiry,
             strike,
-            underlying_asset_address,
         })
         .try_to_vec()
         .unwrap(),
