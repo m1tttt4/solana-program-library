@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use solana_program::{program_error::ProgramError, pubkey::Pubkey};
-use solana_program_test::processor;
+use solana_program_test::{processor, ProgramTest};
 
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
@@ -11,7 +11,7 @@ use spl_governance::{
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
         governance::{get_account_governance_address, GovernanceConfig},
-        proposal::get_proposal_address,
+        proposal::{get_proposal_address, VoteType},
         realm::get_realm_address,
         token_owner_record::get_token_owner_record_address,
     },
@@ -21,7 +21,7 @@ use spl_governance_chat::{
     processor::process_instruction,
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
-use spl_governance_test_sdk::{ProgramTestBench, TestBenchProgram};
+use spl_governance_test_sdk::ProgramTestBench;
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -37,23 +37,22 @@ pub struct GovernanceChatProgramTest {
 
 impl GovernanceChatProgramTest {
     pub async fn start_new() -> Self {
+        let mut program_test = ProgramTest::default();
         let program_id = Pubkey::from_str("GovernanceChat11111111111111111111111111111").unwrap();
-
-        let chat_program = TestBenchProgram {
-            program_name: "spl_governance_chat",
-            program_id: program_id,
-            process_instruction: processor!(process_instruction),
-        };
+        program_test.add_program(
+            "spl_governance_chat",
+            program_id,
+            processor!(process_instruction),
+        );
 
         let governance_program_id =
             Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
-        let governance_program = TestBenchProgram {
-            program_name: "spl_governance",
-            program_id: governance_program_id,
-            process_instruction: processor!(spl_governance::processor::process_instruction),
-        };
-
-        let bench = ProgramTestBench::start_new(&[chat_program, governance_program]).await;
+        program_test.add_program(
+            "spl_governance",
+            governance_program_id,
+            processor!(spl_governance::processor::process_instruction),
+        );
+        let bench = ProgramTestBench::start_new(program_test).await;
 
         Self {
             bench,
@@ -178,7 +177,9 @@ impl GovernanceChatProgramTest {
 
         let proposal_name = "Proposal #1".to_string();
         let description_link = "Proposal Description".to_string();
+        let options = vec!["Yes".to_string()];
         let proposal_index: u32 = 0;
+        let use_deny_option = true;
 
         let create_proposal_ix = create_proposal(
             &self.governance_program_id,
@@ -191,6 +192,9 @@ impl GovernanceChatProgramTest {
             proposal_name,
             description_link.clone(),
             &governing_token_mint_keypair.pubkey(),
+            VoteType::SingleChoice,
+            options,
+            use_deny_option,
             proposal_index,
         );
 

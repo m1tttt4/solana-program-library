@@ -10,7 +10,7 @@ use {
         borsh::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        system_instruction, sysvar,
+        stake, system_instruction, sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,8 +19,7 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        error::StakePoolError, find_transient_stake_program_address, id, instruction,
-        stake_program, state,
+        error::StakePoolError, find_transient_stake_program_address, id, instruction, state,
     },
 };
 
@@ -131,9 +130,9 @@ async fn success() {
         .unwrap();
     assert!(account.is_none());
     let stake = get_account(&mut context.banks_client, &destination_stake.pubkey()).await;
-    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake_program::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _) => {
             assert_eq!(&meta.authorized.staker, &new_authority);
             assert_eq!(&meta.authorized.withdrawer, &new_authority);
         }
@@ -174,12 +173,14 @@ async fn fail_with_wrong_stake_program_id() {
         &[&context.payer, &stake_pool_accounts.staker],
         context.last_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -217,12 +218,14 @@ async fn fail_with_wrong_validator_list_account() {
         &[&context.payer, &stake_pool_accounts.staker],
         context.last_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -299,7 +302,7 @@ async fn fail_double_remove() {
         .await;
     assert!(error.is_none());
 
-    let _latest_blockhash = context.banks_client.get_recent_blockhash().await.unwrap();
+    let _latest_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
 
     let destination_stake = Keypair::new();
     let error = stake_pool_accounts
@@ -344,12 +347,14 @@ async fn fail_wrong_staker() {
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer, &malicious], context.last_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -380,7 +385,7 @@ async fn fail_no_signature() {
         AccountMeta::new_readonly(validator_stake.transient_stake_account, false),
         AccountMeta::new(destination_stake.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -396,12 +401,14 @@ async fn fail_no_signature() {
         &[&context.payer],
         context.last_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -465,7 +472,7 @@ async fn success_with_deactivating_transient_stake() {
         setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
@@ -667,9 +674,9 @@ async fn success_resets_preferred_validator() {
 
     // Check of stake account authority has changed
     let stake = get_account(&mut context.banks_client, &destination_stake.pubkey()).await;
-    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake_program::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _) => {
             assert_eq!(&meta.authorized.staker, &new_authority);
             assert_eq!(&meta.authorized.withdrawer, &new_authority);
         }
@@ -697,8 +704,10 @@ async fn success_with_hijacked_transient_account() {
     assert!(error.is_none());
 
     // warp forward to merge
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(slots_per_epoch * 2).unwrap();
+    let mut slot = first_normal_slot + slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -724,7 +733,8 @@ async fn success_with_hijacked_transient_account() {
     assert!(error.is_none());
 
     // warp forward to merge
-    context.warp_to_slot(slots_per_epoch * 4).unwrap();
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     // hijack
     let validator_list = stake_pool_accounts
@@ -756,13 +766,13 @@ async fn success_with_hijacked_transient_account() {
                 &transient_stake_address,
                 1_000_000_000,
             ),
-            stake_program::initialize(
+            stake::instruction::initialize(
                 &transient_stake_address,
-                &stake_program::Authorized {
+                &stake::state::Authorized {
                     staker: hijacker.pubkey(),
                     withdrawer: hijacker.pubkey(),
                 },
-                &stake_program::Lockup::default(),
+                &stake::state::Lockup::default(),
             ),
             instruction::update_stake_pool_balance(
                 &id(),

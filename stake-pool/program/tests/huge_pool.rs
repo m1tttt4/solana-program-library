@@ -7,7 +7,7 @@ use {
     helpers::*,
     solana_program::{
         borsh::try_from_slice_unchecked, program_option::COption, program_pack::Pack,
-        pubkey::Pubkey,
+        pubkey::Pubkey, stake,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -24,14 +24,13 @@ use {
         find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address, id,
         instruction::{self, PreferredValidatorType},
-        stake_program,
         state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
     spl_token::state::{Account as SplAccount, AccountState as SplAccountState, Mint},
 };
 
-const HUGE_POOL_SIZE: u32 = 3_950;
+const HUGE_POOL_SIZE: u32 = 3_825;
 const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;
@@ -72,7 +71,7 @@ async fn setup(
         total_lamports: 0,
         pool_token_supply: 0,
         last_update_epoch: 0,
-        lockup: stake_program::Lockup::default(),
+        lockup: stake::state::Lockup::default(),
         epoch_fee: stake_pool_accounts.epoch_fee,
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
@@ -98,13 +97,13 @@ async fn setup(
     let authorized_withdrawer = Pubkey::new_unique();
     let commission = 1;
 
-    let meta = stake_program::Meta {
+    let meta = stake::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
-        authorized: stake_program::Authorized {
+        authorized: stake::state::Authorized {
             staker: stake_pool_accounts.withdraw_authority,
             withdrawer: stake_pool_accounts.withdraw_authority,
         },
-        lockup: stake_program::Lockup::default(),
+        lockup: stake::state::Lockup::default(),
     };
 
     for _ in 0..max_validators {
@@ -133,8 +132,8 @@ async fn setup(
 
     for vote_account_address in vote_account_pubkeys.iter().take(num_validators as usize) {
         // create validator stake account
-        let stake = stake_program::Stake {
-            delegation: stake_program::Delegation {
+        let stake = stake::state::Stake {
+            delegation: stake::state::Delegation {
                 voter_pubkey: *vote_account_address,
                 stake: stake_amount,
                 activation_epoch: 0,
@@ -146,11 +145,11 @@ async fn setup(
 
         let stake_account = Account::create(
             stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-            bincode::serialize::<stake_program::StakeState>(&stake_program::StakeState::Stake(
+            bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
                 meta, stake,
             ))
             .unwrap(),
-            stake_program::id(),
+            stake::program::id(),
             false,
             Epoch::default(),
         );
@@ -183,11 +182,11 @@ async fn setup(
 
     let reserve_stake_account = Account::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-        bincode::serialize::<stake_program::StakeState>(&stake_program::StakeState::Initialized(
+        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Initialized(
             meta,
         ))
         .unwrap(),
-        stake_program::id(),
+        stake::program::id(),
         false,
         Epoch::default(),
     );
@@ -266,9 +265,9 @@ async fn setup(
     // make stake account
     let user = Keypair::new();
     let deposit_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
+    let lockup = stake::state::Lockup::default();
 
-    let authorized = stake_program::Authorized {
+    let authorized = stake::state::Authorized {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };

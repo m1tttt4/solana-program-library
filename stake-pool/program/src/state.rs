@@ -3,7 +3,7 @@
 use spl_token::state::{Account, AccountState};
 use {
     crate::{
-        big_vec::BigVec, error::StakePoolError, stake_program::Lockup, MAX_WITHDRAWAL_FEE_INCREASE,
+        big_vec::BigVec, error::StakePoolError, MAX_WITHDRAWAL_FEE_INCREASE,
         WITHDRAWAL_BASELINE_FEE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
@@ -17,6 +17,7 @@ use {
         program_memory::sol_memcmp,
         program_pack::{Pack, Sealed},
         pubkey::{Pubkey, PUBKEY_BYTES},
+        stake::state::Lockup,
     },
     spl_math::checked_ceil_div::CheckedCeilDiv,
     std::{convert::TryFrom, fmt, matches},
@@ -532,12 +533,16 @@ impl Default for StakeStatus {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
-    /// Amount of active stake delegated to this validator
+    /// Amount of active stake delegated to this validator, minus the minimum
+    /// required stake amount of rent-exemption + `crate::MINIMUM_ACTIVE_STAKE`
+    /// (currently 0.001 SOL).
+    ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
     pub active_stake_lamports: u64,
 
     /// Amount of transient stake delegated to this validator
+    ///
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
     pub transient_stake_lamports: u64,

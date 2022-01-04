@@ -5,6 +5,7 @@ mod process_cancel_proposal;
 mod process_cast_vote;
 mod process_create_account_governance;
 mod process_create_mint_governance;
+mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
@@ -23,6 +24,7 @@ mod process_set_governance_delegate;
 mod process_set_realm_authority;
 mod process_set_realm_config;
 mod process_sign_off_proposal;
+mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
@@ -32,6 +34,7 @@ use process_cancel_proposal::*;
 use process_cast_vote::*;
 use process_create_account_governance::*;
 use process_create_mint_governance::*;
+use process_create_native_treasury::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
@@ -50,6 +53,7 @@ use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
 use process_set_realm_config::*;
 use process_sign_off_proposal::*;
+use process_update_program_metadata::*;
 use process_withdraw_governing_tokens::*;
 
 use solana_program::{
@@ -68,6 +72,7 @@ pub fn process_instruction(
         try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 
     if let GovernanceInstruction::InsertInstruction {
+        option_index,
         index,
         hold_up_time,
         instruction: _,
@@ -75,7 +80,8 @@ pub fn process_instruction(
     {
         // Do not dump instruction data into logs
         msg!(
-            "GOVERNANCE-INSTRUCTION: InsertInstruction {{ index: {:?}, hold_up_time: {:?} }}",
+            "GOVERNANCE-INSTRUCTION: InsertInstruction {{option_index: {:?}, index: {:?}, hold_up_time: {:?} }}",
+            option_index,
             index,
             hold_up_time
         );
@@ -127,13 +133,17 @@ pub fn process_instruction(
         GovernanceInstruction::CreateProposal {
             name,
             description_link,
-            governing_token_mint,
+            vote_type: proposal_type,
+            options,
+            use_deny_option,
         } => process_create_proposal(
             program_id,
             accounts,
             name,
             description_link,
-            governing_token_mint,
+            proposal_type,
+            options,
+            use_deny_option,
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
@@ -153,10 +163,18 @@ pub fn process_instruction(
         GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
 
         GovernanceInstruction::InsertInstruction {
+            option_index,
             index,
             hold_up_time,
             instruction,
-        } => process_insert_instruction(program_id, accounts, index, hold_up_time, instruction),
+        } => process_insert_instruction(
+            program_id,
+            accounts,
+            option_index,
+            index,
+            hold_up_time,
+            instruction,
+        ),
 
         GovernanceInstruction::RemoveInstruction {} => {
             process_remove_instruction(program_id, accounts)
@@ -180,6 +198,12 @@ pub fn process_instruction(
         }
         GovernanceInstruction::CreateTokenOwnerRecord {} => {
             process_create_token_owner_record(program_id, accounts)
+        }
+        GovernanceInstruction::UpdateProgramMetadata {} => {
+            process_update_program_metadata(program_id, accounts)
+        }
+        GovernanceInstruction::CreateNativeTreasury {} => {
+            process_create_native_treasury(program_id, accounts)
         }
     }
 }

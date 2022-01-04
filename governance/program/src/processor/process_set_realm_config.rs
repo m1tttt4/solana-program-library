@@ -8,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -18,7 +19,6 @@ use crate::{
             get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
         },
     },
-    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes SetRealmConfig instruction
@@ -46,7 +46,7 @@ pub fn process_set_realm_config(
         let council_token_mint_info = next_account_info(account_info_iter)?; // 2
         let _council_token_holding_info = next_account_info(account_info_iter)?; // 3
 
-        // Council mint can only be at present set to none (removed) and changing it to other mint is not supported
+        // Council mint can only be at present set to None (removed) and changing it to other mint is not supported
         // It might be implemented in future versions but it needs careful planning
         // It can potentially open a can of warms like what happens with existing deposits or pending proposals
         if let Some(council_token_mint) = realm_data.config.council_mint {
@@ -77,13 +77,13 @@ pub fn process_set_realm_config(
                 account_type: GovernanceAccountType::RealmConfig,
                 realm: *realm_info.key,
                 community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
-                reserved_1: None,
-                reserved_2: None,
-                reserved_3: None,
+                community_max_vote_weight_addin: None,
+                council_voter_weight_addin: None,
+                council_max_vote_weight_addin: None,
                 reserved: [0; 128],
             };
 
-            let rent = Rent::get().unwrap();
+            let rent = Rent::get()?;
 
             create_and_serialize_account_signed::<RealmConfigAccount>(
                 payer_info,

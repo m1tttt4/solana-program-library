@@ -9,12 +9,9 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use crate::{
-    error::GovernanceError,
-    state::token_owner_record::TokenOwnerRecord,
-    tools::account::{get_account_data, AccountMaxSize},
-};
+use crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecord};
 
 /// VoterWeight account type
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -66,7 +63,7 @@ impl VoterWeightRecord {
     /// Asserts the VoterWeightRecord hasn't expired
     pub fn assert_is_up_to_date(&self) -> Result<(), ProgramError> {
         if let Some(voter_weight_expiry) = self.voter_weight_expiry {
-            let slot = Clock::get().unwrap().slot;
+            let slot = Clock::get()?.slot;
 
             if slot > voter_weight_expiry {
                 return Err(GovernanceError::VoterWeightRecordExpired.into());
@@ -82,7 +79,7 @@ pub fn get_voter_weight_record_data(
     program_id: &Pubkey,
     voter_weight_record_info: &AccountInfo,
 ) -> Result<VoterWeightRecord, ProgramError> {
-    get_account_data::<VoterWeightRecord>(voter_weight_record_info, program_id)
+    get_account_data::<VoterWeightRecord>(program_id, voter_weight_record_info)
 }
 
 /// Deserializes VoterWeightRecord account, checks owner program and asserts it's for the same realm, mint and token owner as the provided TokenOwnerRecord

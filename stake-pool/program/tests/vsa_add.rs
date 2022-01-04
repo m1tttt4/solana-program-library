@@ -11,7 +11,7 @@ use {
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        system_program, sysvar,
+        stake, system_program, sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,9 +19,7 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{
-        error::StakePoolError, find_stake_program_address, id, instruction, stake_program, state,
-    },
+    spl_stake_pool::{error::StakePoolError, find_stake_program_address, id, instruction, state},
 };
 
 async fn setup() -> (
@@ -102,9 +100,9 @@ async fn success() {
 
     // Check stake account existence and authority
     let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;
-    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake_program::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _) => {
             assert_eq!(
                 &meta.authorized.staker,
                 &stake_pool_accounts.withdraw_authority
@@ -139,11 +137,13 @@ async fn fail_with_wrong_validator_list_account() {
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -172,7 +172,7 @@ async fn fail_double_add() {
         )
         .await;
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     let transaction_error = stake_pool_accounts
         .add_validator_to_pool(
@@ -218,11 +218,13 @@ async fn fail_wrong_staker() {
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &malicious], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -252,9 +254,9 @@ async fn fail_without_signature() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::config_id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -266,11 +268,13 @@ async fn fail_without_signature() {
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -301,7 +305,7 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::config_id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
     ];
@@ -314,11 +318,13 @@ async fn fail_with_wrong_stake_program_id() {
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
@@ -348,9 +354,9 @@ async fn fail_with_wrong_system_program_id() {
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::config_id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(wrong_system_program, false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -361,11 +367,13 @@ async fn fail_with_wrong_system_program_id() {
     };
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {

@@ -7,6 +7,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -15,7 +16,6 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::{get_token_owner_record_address_seeds, TokenOwnerRecord},
     },
-    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes CreateTokenOwnerRecord instruction
@@ -31,7 +31,7 @@ pub fn process_create_token_owner_record(
     let governing_token_mint_info = next_account_info(account_info_iter)?; // 3
     let payer_info = next_account_info(account_info_iter)?; // 4
     let system_info = next_account_info(account_info_iter)?; // 5
-    let rent = Rent::get().unwrap();
+    let rent = Rent::get()?;
 
     let realm_data = get_realm_data(program_id, realm_info)?;
     realm_data.assert_is_valid_governing_token_mint(governing_token_mint_info.key)?;
